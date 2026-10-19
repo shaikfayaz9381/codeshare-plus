@@ -12,7 +12,24 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated local data (test databases, local storage objects).
+    ".data/**",
+    "coverage/**",
   ]),
+  {
+    rules: {
+      // Interface-driven callbacks often need placeholder parameters
+      // (e.g. storage drivers); `_`-prefixed names are intentionally unused.
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;

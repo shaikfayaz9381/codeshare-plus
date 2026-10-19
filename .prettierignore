@@ -1,0 +1,19 @@
+# Build output
+.next/
+out/
+build/
+coverage/
+
+# Dependencies
+node_modules/
+
+# Local data (development databases, local storage objects)
+.data/
+
+# Vendored shadcn/ui components keep the registry's own formatting
+components/ui/
+
+# Lockfiles and generated files
+package-lock.json
+next-env.d.ts
+supabase/migrations/*.sql

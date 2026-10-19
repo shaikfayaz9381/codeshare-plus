@@ -444,18 +444,23 @@ node scripts/db-migrate.mjs --reset --bootstrap   # migrations applied to a clea
 npx tsc --noEmit                                  # exit 0
 npm run lint                                      # 0 problems
 npm run format:check                              # clean
-npx vitest run                                    # 121 tests passing (98 unit + 23 integration)
+npx vitest run                                    # 130 tests passing (106 unit + 24 integration)
 npm run build                                     # production build succeeded; every content route dynamic
 NEXT_PUBLIC_APP_URL=http://127.0.0.1:3100 npx playwright test
                                                   # 2/2 browser tests passing against the PRODUCTION build:
-                                                  #   create → code (CodeMirror typing) → note → CSV upload →
+                                                  #   create → code (CodeMirror typing) → note → CSV + PDF upload →
                                                   #   password → dashboard → QR → anonymous gate → unlock →
-                                                  #   code + CSV previews → ZIP download → revoke →
+                                                  #   code + CSV previews → PDF preview (same-origin stream,
+                                                  #   Range headers, no CSP errors) → ZIP download → revoke →
                                                   #   revoked screen → delete → 404
+# same browser suite against the deployed instance (Supabase DB + private bucket):
+#   PLAYWRIGHT_BASE_URL=https://codeshare-plus.onrender.com npx playwright test
+#   -> guest flow passes end to end, including the PDF preview assertions above
 # production server smoke tests (built app, real PostgreSQL, real local storage):
 #   GET /api/health -> database.ok, storage.ok (local driver), auth disabled and reported
 #   GET /s/<demo share> -> 200 with all item titles server-rendered
-#   content endpoint -> X-Frame-Options: SAMEORIGIN + CSP frame-ancestors 'self' (pages stay DENY)
+#   content endpoint -> 200 inline (no storage redirect) + X-Frame-Options: SAMEORIGIN
+#     + CSP frame-ancestors 'self' (pages stay DENY); Range -> 206 bytes a-b/total
 #   GET /api/shares/<id>/download-all -> application/zip, attachment, PK magic bytes
 #   GET /s/does-not-exist -> 404
 #   npm audit --omit=dev -> 0 vulnerabilities (advisories remain in the shadcn CLI dev toolchain)

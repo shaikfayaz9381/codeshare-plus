@@ -473,10 +473,10 @@ PLAYWRIGHT_BASE_URL=http://127.0.0.1:3100 npx playwright test   # or test a runn
 
 Stated plainly so nothing is mistaken for finished work:
 
-- **Supabase Auth and Supabase Storage code paths are not verified against a live Supabase
-  project** (no credentials in this environment), and that includes `/login`, sign-up, and
-  sign-out. They are exercised structurally only; the local storage driver and the auth test seam
-  are what the suites use. Verify against your own project before relying on them. Direct-to-storage
+- **Supabase Auth is not configured on the live deployment** (it runs guest-only; `/login` says so),
+  so sign-up, sign-in, and account-claim flows are exercised structurally only. Supabase
+  **Storage** is verified live end-to-end: private-bucket uploads through the server, inline
+  preview streaming, file downloads, and ZIP exports all read from Supabase Storage. Direct-to-storage
   browser uploads (files above `MAX_PROXIED_UPLOAD_MB`, 4 MB by default) additionally need
   `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`; without them the UI reports a
   precise error and the proxy path keeps working for smaller files.
@@ -492,8 +492,8 @@ Stated plainly so nothing is mistaken for finished work:
 - The viewer records a per-day view count per share; there is no analytics dashboard, and repeat
   views in the same render pass are counted once.
 - Local filesystem storage is single-instance only and is not a production storage backend.
-- PDF preview depends on the browser's built-in viewer; the content endpoint is the only response
-  allowed to be framed (same origin).
+- PDF preview depends on the browser's built-in viewer. Preview bytes are relayed same-origin by the
+  content endpoint (the only frameable response), so storage URLs are never framed directly.
 
 ## License
 

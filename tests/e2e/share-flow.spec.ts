@@ -6,8 +6,8 @@ import path from "node:path";
  * Full-stack browser smoke test:
  *
  *   create a collection -> add code/note/file -> set a password ->
- *   open it as an anonymous visitor -> unlock -> preview a CSV -> download ZIP ->
- *   revoke -> confirm the gate -> delete -> confirm 404.
+ *   open it as an anonymous visitor -> unlock -> preview a CSV and a PDF ->
+ *   download ZIP -> revoke -> confirm the gate -> delete -> confirm 404.
  *
  * It runs against the real Next.js server and PostgreSQL database. The share is
  * unique per run and deleted at the end, so repeated runs do not accumulate
@@ -68,12 +68,17 @@ test("guest can build, protect, view, export, revoke, and delete a collection", 
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
 
-  // --- Upload a file (proxy transport) --------------------------------------
+  // --- Upload files (proxy transport) ---------------------------------------
   await page
     .locator('input[type="file"]')
     .setInputFiles(path.join(__dirname, "fixtures", "sample.csv"));
   const itemList = page.getByRole("list", { name: "Collection items" });
   await expect(itemList.getByText("sample.csv").first()).toBeVisible({ timeout: 20_000 });
+
+  await page
+    .locator('input[type="file"]')
+    .setInputFiles(path.join(__dirname, "fixtures", "sample.pdf"));
+  await expect(itemList.getByText("sample.pdf").first()).toBeVisible({ timeout: 20_000 });
 
   // --- Protect with a password ----------------------------------------------
   await page.locator("#settings-password-mode").click();
@@ -90,6 +95,11 @@ test("guest can build, protect, view, export, revoke, and delete a collection", 
   // --- Anonymous visitor: password gate -------------------------------------
   const viewerContext = await browser.newContext();
   const viewer = await viewerContext.newPage();
+  // Preview bytes must never be blocked by the page CSP; surface any violation.
+  const viewerConsoleErrors: string[] = [];
+  viewer.on("console", (message) => {
+    if (message.type() === "error") viewerConsoleErrors.push(message.text());
+  });
   await viewer.goto(shareUrl);
   await expect(viewer.getByText("Password required")).toBeVisible();
   await expect(viewer.getByText(title, { exact: true })).toBeVisible();
@@ -106,7 +116,26 @@ test("guest can build, protect, view, export, revoke, and delete a collection", 
   await expect(viewer.getByRole("table")).toBeVisible();
   await expect(viewer.getByRole("cell", { name: "Ada" })).toBeVisible();
 
-  const downloadPromise = viewer.waitForEvent("download");
+  // The PDF preview frames the authorized content route (same-origin, so the
+  // page CSP allows it) and never redirects to third-party storage URLs.
+  await viewer.getByRole("button", { name: /sample\.pdf/ }).click();
+  const pdfFrame = viewer.locator('iframe[title^="PDF preview"]');
+  await expect(pdfFrame).toBeVisible();
+  const pdfSource = await pdfFrame.getAttribute("src");
+  expect(pdfSource).toBeTruthy();
+  expect(pdfSource).toContain("/content");
+  const pdfResponse = await viewer.request.get(pdfSource!);
+  expect([200, 206]).toContain(pdfResponse.status());
+  expect(pdfResponse.headers()["content-type"]).toContain("application/pdf");
+  expect(pdfResponse.headers()["x-frame-options"]).toBe("SAMEORIGIN");
+  expect(pdfResponse.headers()["content-security-policy"]).toContain("frame-ancestors 'self'");
+  expect(pdfResponse.headers()["location"]).toBeUndefined();
+
+  const downloadPromise = viewer.waitForEvent("download", {
+    // Headless Chromium has no PDF viewer and downloads the framed PDF; pin
+    // this wait to the ZIP export so the stray download cannot satisfy it.
+    predicate: (candidate) => candidate.url().includes("/download-all"),
+  });
   await viewer.getByRole("link", { name: "Download all" }).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toMatch(/\.zip$/);
@@ -133,6 +162,12 @@ test("guest can build, protect, view, export, revoke, and delete a collection", 
 
   await viewer.goto(shareUrl);
   await expect(viewer.getByRole("heading", { name: "This share does not exist" })).toBeVisible();
+
+  // No CSP violation was logged while previewing: framed/streamed bytes must
+  // stay same-origin (this is the regression guard for blocked PDF previews).
+  expect(viewerConsoleErrors.join("\n")).not.toMatch(
+    /ERR_BLOCKED_BY_CSP|violates the following Content Security Policy/,
+  );
 
   await viewerContext.close();
 });

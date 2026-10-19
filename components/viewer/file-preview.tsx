@@ -1,6 +1,13 @@
 "use client";
 
-import { ArchiveIcon, DownloadIcon, FileWarningIcon, ImageOffIcon } from "lucide-react";
+import {
+  ArchiveIcon,
+  DownloadIcon,
+  FileSpreadsheetIcon,
+  FileTextIcon,
+  FileWarningIcon,
+  ImageOffIcon,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { formatBytes } from "@/lib/format";
@@ -175,8 +182,15 @@ export function FilePreview({ preview, item, contentUrl }: FilePreviewProps) {
     preview.kind === "unsupported"
       ? preview.reason
       : "This file can be downloaded but not previewed inline.";
-  const icon = preview.mimeType?.startsWith("image/") ? (
+  const mime = (preview.mimeType ?? "").toLowerCase();
+  const icon = mime.startsWith("image/") ? (
     <ImageOffIcon className="mx-auto size-8 text-muted-foreground" aria-hidden="true" />
+  ) : /spreadsheetml|ms-excel|opendocument\.spreadsheet/.test(mime) ? (
+    <FileSpreadsheetIcon className="mx-auto size-8 text-muted-foreground" aria-hidden="true" />
+  ) : /wordprocessingml|msword|presentationml|ms-powerpoint|opendocument|application\/rtf/.test(
+      mime,
+    ) ? (
+    <FileTextIcon className="mx-auto size-8 text-muted-foreground" aria-hidden="true" />
   ) : (
     <FileWarningIcon className="mx-auto size-8 text-muted-foreground" aria-hidden="true" />
   );

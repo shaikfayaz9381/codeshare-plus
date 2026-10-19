@@ -5,6 +5,7 @@ import { getItemForShare } from "@/lib/services/items";
 import { classifyStoredFile } from "@/lib/uploads/file-types";
 import { getStorage } from "@/lib/storage";
 import { LocalStorageDriver } from "@/lib/storage/local";
+import { streamSignedObject } from "@/lib/storage/signed-response";
 import { sanitizeFilename } from "@/lib/security/filenames";
 import { forbidden } from "@/lib/errors";
 import type { ShareItemRow } from "@/lib/db/rows";
@@ -20,9 +21,10 @@ export const dynamic = "force-dynamic";
  *  - code/text   -> raw text (used for downloads; the viewer's copy action uses
  *                   the item endpoint instead)
  *
- * Storage keys are never exposed. For Supabase storage the server answers with
- * a 302 to a short-lived (60 s) signed URL after authorization; the local
- * driver streams bytes through this handler (with Range support for PDFs).
+ * Storage keys are never exposed. Inline previews always stream through this
+ * handler (Range supported, so PDF viewers and media players can seek) and
+ * stay same-origin, which the page CSP requires. Attachment downloads may
+ * redirect to a short-lived (60 s) signed URL when the driver supports it.
  */
 
 const EXTENSION_BY_LANGUAGE: Record<string, string> = {
@@ -143,16 +145,30 @@ export async function GET(
 
     const storage = getStorage();
 
-    // Supabase (or any driver that can sign): redirect to a short-lived URL.
+    // Drivers that support signing answer with a short-lived URL. Attachments
+    // may redirect to it (the browser downloads directly; CSP does not apply).
+    // Inline previews must stay same-origin — the page CSP allows only 'self'
+    // for frames, images and media — so those bytes are streamed back through
+    // this handler and the signed URL never reaches the browser.
     const signed = await storage.createSignedDownload(
       item.storage_key,
       60,
       disposition === "attachment" ? filename : undefined,
     );
-    if (signed) {
+    if (signed && disposition === "attachment") {
       return new Response(null, {
         status: 302,
         headers: { ...baseHeaders, Location: signed },
+      });
+    }
+
+    if (signed) {
+      return await streamSignedObject({
+        signedUrl: signed,
+        rangeHeader: request.headers.get("range"),
+        contentType,
+        contentDisposition: contentDisposition(disposition, filename),
+        baseHeaders,
       });
     }
 

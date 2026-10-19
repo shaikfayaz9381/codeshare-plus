@@ -241,6 +241,46 @@ function decodeUtf8(bytes: Uint8Array): string | null {
   }
 }
 
+/**
+ * Office/OpenDocument formats cannot be rendered by browsers natively. A
+ * type-aware message is more useful than a generic "no preview" for them.
+ */
+const DOCUMENT_MIME_LABELS: Array<[RegExp, string]> = [
+  [/wordprocessingml|msword/, "Word document"],
+  [/spreadsheetml|ms-excel/, "Spreadsheet"],
+  [/presentationml|ms-powerpoint/, "Presentation"],
+  [/opendocument\.text/, "OpenDocument text"],
+  [/opendocument\.spreadsheet/, "OpenDocument spreadsheet"],
+  [/opendocument\.presentation/, "OpenDocument presentation"],
+  [/opendocument\.graphics|vnd\.visio/, "Document"],
+  [/application\/rtf/, "Rich text document"],
+];
+
+const DOCUMENT_EXTENSION_LABELS: Record<string, string> = {
+  doc: "Word document",
+  docx: "Word document",
+  odt: "OpenDocument text",
+  rtf: "Rich text document",
+  xls: "Spreadsheet",
+  xlsx: "Spreadsheet",
+  ods: "OpenDocument spreadsheet",
+  ppt: "Presentation",
+  pptx: "Presentation",
+  odp: "OpenDocument presentation",
+  vsd: "Document",
+  vsdx: "Document",
+  odg: "Document",
+};
+
+function documentKindLabel(mimeType: string | null, filename: string): string | null {
+  const mime = (mimeType ?? "").toLowerCase();
+  for (const [pattern, label] of DOCUMENT_MIME_LABELS) {
+    if (pattern.test(mime)) return label;
+  }
+  const extension = filename.split(".").pop()?.toLowerCase() ?? "";
+  return DOCUMENT_EXTENSION_LABELS[extension] ?? null;
+}
+
 export async function previewFileItem(item: ShareItemRow): Promise<PreviewResponse> {
   if (item.item_type !== "file" || !item.storage_key) {
     return { kind: "unsupported", reason: "Not a file item.", mimeType: null, sizeBytes: 0 };
@@ -352,12 +392,16 @@ export async function previewFileItem(item: ShareItemRow): Promise<PreviewRespon
       const language = detectLanguageFromFilename(filename);
       return { kind: "text", text, truncated: false, language, format: "text" };
     }
-    default:
+    default: {
+      const label = documentKindLabel(item.mime_type, filename);
       return {
         kind: "unsupported",
-        reason: "No inline preview is available for this file type.",
+        reason: label
+          ? `${label} files can't be rendered in the browser. Download the file and open it in the matching app.`
+          : "No inline preview is available for this file type.",
         mimeType: item.mime_type,
         sizeBytes: size,
       };
+    }
   }
 }

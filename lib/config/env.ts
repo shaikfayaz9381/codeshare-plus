@@ -109,9 +109,12 @@ export class ConfigurationError extends Error {
 
 function requireValue(name: keyof ServerEnv, why: string, value: string | undefined): string {
   if (!value) {
-    throw new ConfigurationError(
-      `Missing required configuration "${name}". ${why} Add it to .env.local (see .env.example).`,
-    );
+    const where =
+      process.env.NODE_ENV === "production"
+        ? "Set it in your hosting provider's environment variables (Render: service -> Environment; " +
+          "Vercel: Project -> Settings -> Environment Variables) and redeploy."
+        : "Add it to .env.local (see .env.example).";
+    throw new ConfigurationError(`Missing required configuration "${name}". ${why} ${where}`);
   }
   return value;
 }

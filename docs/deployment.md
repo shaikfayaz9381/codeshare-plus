@@ -75,6 +75,19 @@ Full descriptions and defaults live in [`.env.example`](../.env.example).
 4. Deploy. `vercel.json` ships a daily cron entry for `/api/cron/maintenance` (adjust the schedule
    to taste; Vercel Hobby plan supports one run per day).
 
+### Render
+
+1. Create a **Web Service** from the repository.
+   - Build command: `npm ci --include=dev && npm run build` (`--include=dev` is required when the
+     service sets `NODE_ENV=production`, otherwise the build tools are skipped).
+   - Start command: `npm run start` (`next start` honours `$PORT`).
+   - Health check path: `/api/health`.
+2. Add every variable from § 3 under **Environment** _before_ the first build —
+   `NEXT_PUBLIC_*` values are inlined at build time. After changing them, use
+   **Clear build cache & deploy**.
+3. Apply the migrations (§ 2) from your machine; they work through the Supabase pooler.
+4. Free instances sleep when idle, so the first request after a while takes a few seconds.
+
 ### Any Node host
 
 ```bash
@@ -127,11 +140,12 @@ that flow against whatever `PLAYWRIGHT_BASE_URL` points at.
 
 ## Troubleshooting
 
-| Symptom                                    | Likely cause / fix                                                                                                                                     |
-| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `/api/health` reports `database.ok: false` | `DATABASE_URL` wrong, pooler paused, or migrations not applied                                                                                         |
-| Uploads fail with `storage_not_configured` | `STORAGE_DRIVER=supabase` without `SUPABASE_SERVICE_ROLE_KEY`, or bucket missing (re-run migrations)                                                   |
-| Large uploads fail with a 413              | Provider body cap; raise `MAX_PROXIED_UPLOAD_MB` only up to that cap — bigger files should use direct uploads (which need the Supabase URL + anon key) |
-| `/login` says "Guest-only deployment"      | `NEXT_PUBLIC_SUPABASE_URL` / `..._ANON_KEY` missing at build time (restart/rebuild after setting them)                                                 |
-| Share links point at the wrong origin      | `NEXT_PUBLIC_APP_URL` was wrong at build time — rebuild with the production origin                                                                     |
-| Local driver loses files after redeploy    | `local` storage is single-instance and not durable on serverless hosts; use Supabase Storage                                                           |
+| Symptom                                              | Likely cause / fix                                                                                                                                                                      |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Form fails with `Missing required configuration "…"` | The deploy has no environment variables. Set them in the host dashboard (Render: service -> Environment; Vercel: Project -> Settings -> Environment Variables), then redeploy. See § 3. |
+| `/api/health` reports `database.ok: false`           | `DATABASE_URL` wrong, pooler paused, or migrations not applied                                                                                                                          |
+| Uploads fail with `storage_not_configured`           | `STORAGE_DRIVER=supabase` without `SUPABASE_SERVICE_ROLE_KEY`, or bucket missing (re-run migrations)                                                                                    |
+| Large uploads fail with a 413                        | Provider body cap; raise `MAX_PROXIED_UPLOAD_MB` only up to that cap — bigger files should use direct uploads (which need the Supabase URL + anon key)                                  |
+| `/login` says "Guest-only deployment"                | `NEXT_PUBLIC_SUPABASE_URL` / `..._ANON_KEY` missing at build time (restart/rebuild after setting them)                                                                                  |
+| Share links point at the wrong origin                | `NEXT_PUBLIC_APP_URL` was wrong at build time — rebuild with the production origin                                                                                                      |
+| Local driver loses files after redeploy              | `local` storage is single-instance and not durable on serverless hosts; use Supabase Storage                                                                                            |

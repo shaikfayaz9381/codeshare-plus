@@ -173,6 +173,14 @@ test("guest can build, protect, view, export, revoke, and delete a collection", 
 });
 
 test("guest-only deployment explains accounts and starts new visitors empty", async ({ page }) => {
+  // Brand icons ship with the app (the default Next.js favicon must not return).
+  const favicon = await page.request.get("/favicon.ico");
+  expect(favicon.status()).toBe(200);
+  expect(favicon.headers()["content-type"]).toContain("image/x-icon");
+  const vectorIcon = await page.request.get("/icon.svg");
+  expect(vectorIcon.status()).toBe(200);
+  expect(vectorIcon.headers()["content-type"]).toContain("image/svg+xml");
+
   await page.goto("/login");
   await expect(page.getByText("Guest-only deployment", { exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Create a collection" }).first()).toBeVisible();

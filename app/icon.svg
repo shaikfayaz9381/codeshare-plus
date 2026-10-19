@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="CodeShare Plus">
+  <rect width="64" height="64" rx="15" fill="#171717" />
+  <g
+    transform="translate(12.8 12.8) scale(1.6)"
+    fill="none"
+    stroke="#ffffff"
+    stroke-width="2.2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  >
+    <path d="m18 16 4-4-4-4" />
+    <path d="m6 8-4 4 4 4" />
+    <path d="m14.5 4-5 16" />
+  </g>
+</svg>

@@ -21,10 +21,11 @@ on `/login` and `/api/health`.
    bucket (`share-files` by default) and a deny-by-default policy for client roles. All bytes are
    read/written server-side with the service role.
 4. **Auth (optional)** — _Authentication → Providers_: enable Email. Copy the project URL and the
-   **anon** key for the browser-facing variables. Configure SMTP if you want confirmation emails
-   (Supabase's built-in SMTP is rate-limited).
-5. Copy the **service role** key from _Project Settings → API_. It bypasses RLS; it must never be
-   exposed to the browser.
+   **anon** key (or the newer **publishable** key, `sb_publishable_…`) for the browser-facing
+   variables. Configure SMTP if you want confirmation emails (Supabase's built-in SMTP is
+   rate-limited).
+5. Copy the **service role** key (or the newer **secret** key, `sb_secret_…`) from _Project Settings
+   → API / API Keys_. It bypasses RLS; it must never be exposed to the browser.
 
 ## 2. Apply the migrations
 
@@ -55,8 +56,8 @@ Set these in the hosting platform **for the build environment as well as the run
 | `DATABASE_URL`                                              | yes              | Pooler connection string                                              |
 | `NEXT_PUBLIC_APP_URL`                                       | yes              | Canonical origin, e.g. `https://codeshare.example.com`; used in links |
 | `STORAGE_DRIVER`                                            | yes              | `supabase` in production; `local` only for single-instance hosts      |
-| `SUPABASE_SERVICE_ROLE_KEY`                                 | with `supabase`  | Server-only                                                           |
-| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | optional         | Required for accounts (and for direct large uploads)                  |
+| `SUPABASE_SERVICE_ROLE_KEY`                                 | with `supabase`  | Legacy service_role key or `sb_secret_…`; server-only                 |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` | optional         | Legacy anon key or `sb_publishable_…`; required for accounts          |
 | `HASH_SALT`                                                 | yes              | `openssl rand -hex 32` — salts rate-limit/analytics hashes            |
 | `CRON_SECRET`                                               | yes              | Bearer secret for `/api/cron/maintenance`                             |
 | `BCRYPT_COST`                                               | recommended `12` | 10–15 accepted                                                        |

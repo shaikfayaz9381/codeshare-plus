@@ -71,6 +71,9 @@ export async function insertShare(
       lastError = error;
       const code = (error as { code?: string }).code;
       if (code !== "23505") throw error; // not a unique violation -> fail fast
+      // Surface the original unique-violation on the final attempt so callers
+      // that supplied a fixed share id can map it to a friendly conflict.
+      if (attempt === attempts - 1) throw error;
     }
   }
   throw new Error(

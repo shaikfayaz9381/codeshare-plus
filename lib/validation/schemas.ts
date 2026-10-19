@@ -31,6 +31,56 @@ export const visibilitySchema = z.enum(["public", "unlisted"]);
 export const expiryOptionSchema = z.enum(["1h", "24h", "7d", "30d", "never"]);
 export const languageSchema = z.enum(CODE_LANGUAGES);
 
+/**
+ * Custom share links (e.g. `/s/my-team-notes`).
+ *
+ * Constraints are deliberately conservative: lowercase letters, digits and
+ * hyphens, 4-32 characters, starting and ending alphanumeric. Input is
+ * normalized (trimmed + lowercased) before validation, and a small blocklist
+ * keeps obviously confusing names out of circulation.
+ */
+export const SHARE_ID_MIN = 4;
+export const SHARE_ID_MAX = 32;
+export const SHARE_ID_PATTERN = /^[a-z0-9](?:[a-z0-9-]{2,30}[a-z0-9])$/;
+export const RESERVED_SHARE_IDS = new Set([
+  "about",
+  "account",
+  "admin",
+  "api",
+  "assets",
+  "cron",
+  "dashboard",
+  "docs",
+  "health",
+  "help",
+  "login",
+  "logout",
+  "manage",
+  "new",
+  "privacy",
+  "robots",
+  "s",
+  "security",
+  "settings",
+  "signin",
+  "signup",
+  "static",
+  "support",
+  "terms",
+]);
+
+export const customShareIdSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .min(SHARE_ID_MIN, `Link must be at least ${SHARE_ID_MIN} characters.`)
+  .max(SHARE_ID_MAX, `Link must be at most ${SHARE_ID_MAX} characters.`)
+  .regex(
+    SHARE_ID_PATTERN,
+    "Use lowercase letters, numbers and hyphens; start and end with a letter or number.",
+  )
+  .refine((value) => !RESERVED_SHARE_IDS.has(value), "This link is reserved. Pick another one.");
+
 export const sharePasswordSchema = z
   .string()
   .min(8, "Password must be at least 8 characters.")
@@ -44,6 +94,8 @@ export const createShareSchema = z.object({
   password: sharePasswordSchema.nullish(),
   allowDownload: z.boolean().default(true),
   allowEdit: z.boolean().default(false),
+  /** Optional vanity link; a random 22-character id is used when omitted. */
+  customShareId: customShareIdSchema.optional(),
 });
 export type CreateShareInput = z.infer<typeof createShareSchema>;
 

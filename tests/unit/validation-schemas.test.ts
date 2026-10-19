@@ -57,6 +57,44 @@ describe("createShareSchema", () => {
   });
 });
 
+describe("custom share links", () => {
+  it("is optional", () => {
+    expect(createShareSchema.parse({ title: "t" }).customShareId).toBeUndefined();
+  });
+
+  it("normalizes case and surrounding whitespace", () => {
+    const parsed = createShareSchema.parse({ title: "t", customShareId: "  My-Team-Notes  " });
+    expect(parsed.customShareId).toBe("my-team-notes");
+  });
+
+  it("accepts valid links", () => {
+    for (const good of ["team", "team2", "my-team-notes", "2026-notes", "a1b2"]) {
+      expect(createShareSchema.safeParse({ title: "t", customShareId: good }).success).toBe(true);
+    }
+  });
+
+  it("rejects malformed links", () => {
+    for (const bad of [
+      "abc", // too short
+      "-team", // leading hyphen
+      "team-", // trailing hyphen
+      "my link", // space
+      "a_b", // underscore
+      "tëam", // non-ascii
+      "x".repeat(33), // too long
+    ]) {
+      expect(createShareSchema.safeParse({ title: "t", customShareId: bad }).success).toBe(false);
+    }
+  });
+
+  it("rejects reserved links case-insensitively", () => {
+    expect(createShareSchema.safeParse({ title: "t", customShareId: "api" }).success).toBe(false);
+    expect(createShareSchema.safeParse({ title: "t", customShareId: "DASHBOARD" }).success).toBe(
+      false,
+    );
+  });
+});
+
 describe("updateShareSchema", () => {
   it("defaults to keeping the password and allows partial updates", () => {
     expect(updateShareSchema.parse({ title: "Renamed" })).toEqual({

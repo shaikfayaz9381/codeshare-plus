@@ -5,6 +5,7 @@ import { sha256Hex, safeEqualHex } from "@/lib/security/digest";
 import { newShareId } from "@/lib/security/ids";
 import {
   AppError,
+  conflict,
   expired,
   forbidden,
   notFound,
@@ -27,10 +28,11 @@ import {
   recordShareView,
   revokeShare,
   updateShare,
+  type InsertShareInput,
   type ListSharesFilter,
   type PagedShares,
 } from "@/lib/db/repositories/shares";
-import { toPublicShare, type ShareWithCounts } from "@/lib/db/rows";
+import { toPublicShare, type ShareRow, type ShareWithCounts } from "@/lib/db/rows";
 import {
   getGrantById,
   insertGrant,
@@ -245,22 +247,42 @@ export async function createShare(
     }
   }
 
-  const row = await insertShare(
-    {
-      title: input.title,
-      description: input.description ?? null,
-      visibility: input.visibility ?? "unlisted",
-      passwordHash,
-      expiresAt,
-      allowDownload: input.allowDownload ?? true,
-      allowEdit: input.allowEdit ?? false,
-      ownerId: actor.kind === "user" ? actor.userId : null,
-      guestOwnerTokenHash: guestHash,
-    },
-    newShareId,
-  );
+  const row = await insertShareWithOptionalCustomId(input, {
+    title: input.title,
+    description: input.description ?? null,
+    visibility: input.visibility ?? "unlisted",
+    passwordHash,
+    expiresAt,
+    allowDownload: input.allowDownload ?? true,
+    allowEdit: input.allowEdit ?? false,
+    ownerId: actor.kind === "user" ? actor.userId : null,
+    guestOwnerTokenHash: guestHash,
+  });
 
   return { resolved: toResolved(row as ShareWithCounts, "ok", ctx), guestToken };
+}
+
+/**
+ * Insert a share, honouring a caller-chosen link when one was supplied.
+ * A taken custom link is mapped to a 409 conflict instead of a retry loop.
+ */
+async function insertShareWithOptionalCustomId(
+  input: CreateShareInput,
+  values: InsertShareInput,
+): Promise<ShareRow> {
+  const customShareId = input.customShareId;
+  try {
+    return await insertShare(
+      values,
+      customShareId ? () => customShareId : newShareId,
+      customShareId ? 1 : 4,
+    );
+  } catch (error) {
+    if (customShareId && (error as { code?: string }).code === "23505") {
+      throw conflict(`The link "${customShareId}" is already taken. Try another one.`);
+    }
+    throw error;
+  }
 }
 
 export async function updateShareForManager(

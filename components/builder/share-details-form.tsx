@@ -44,11 +44,22 @@ const DEFAULT_VALUES: DetailsFormValues = {
   password: "",
   allowDownload: true,
   allowEdit: false,
+  customShareId: "",
 };
 
 const OPTIONAL_PASSWORD = {
   setValueAs: (value: string) => (value === "" ? undefined : value),
 };
+
+const OPTIONAL_TEXT = {
+  setValueAs: (value: string) => {
+    const trimmed = value.trim();
+    return trimmed === "" ? undefined : trimmed;
+  },
+};
+
+/** Origin shown as the prefix of the custom-link input (build-time inlined). */
+const APP_BASE = (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/+$/, "");
 
 export interface ShareDetailsFormProps {
   onCreate: (input: CreateShareInput) => Promise<void>;
@@ -122,6 +133,37 @@ export function ShareDetailsForm({ onCreate }: ShareDetailsFormProps) {
             />
             {errors.description ? (
               <p className="text-sm text-destructive">{errors.description.message}</p>
+            ) : null}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="customShareId">
+              Custom link <span className="text-muted-foreground">(optional)</span>
+            </Label>
+            <div className="border-input focus-within:border-ring focus-within:ring-ring/50 flex items-stretch overflow-hidden rounded-md border shadow-xs transition-[color,box-shadow] focus-within:ring-[3px]">
+              <span className="bg-muted/50 text-muted-foreground hidden max-w-[45%] shrink-0 items-center truncate border-r px-3 text-sm sm:flex">
+                {APP_BASE}/s/
+              </span>
+              <Input
+                id="customShareId"
+                placeholder="my-team-notes"
+                autoComplete="off"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                maxLength={32}
+                className="focus-visible:ring-ring/50 rounded-none border-0 shadow-none focus-visible:ring-0"
+                aria-invalid={Boolean(errors.customShareId)}
+                {...register("customShareId", OPTIONAL_TEXT)}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Lowercase letters, numbers and hyphens (4–32 characters), e.g.{" "}
+              <span className="font-mono">{APP_BASE || "…"}/s/my-team-notes</span>. Leave empty for
+              a random link. Taken and reserved names are rejected.
+            </p>
+            {errors.customShareId ? (
+              <p className="text-sm text-destructive">{errors.customShareId.message}</p>
             ) : null}
           </div>
         </CardContent>

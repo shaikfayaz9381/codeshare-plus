@@ -44,7 +44,7 @@ create the `auth`/`storage` schema stubs first:
 node scripts/db-migrate.mjs --bootstrap
 ```
 
-Alternatively paste the four SQL files into the Supabase SQL editor in order. They are idempotent.
+Alternatively paste the SQL files into the Supabase SQL editor in filename order. They are idempotent.
 
 ## 3. Configure environment variables
 

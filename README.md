@@ -49,6 +49,8 @@ server-side authorization on every request — not a paste-bin demo.
 **Sharing and access control**
 
 - Unguessable 128-bit share IDs; optional bcrypt-hashed password with a rate-limited gate.
+- Optional custom links (`/s/my-team-notes`): normalized, reserved names blocked, duplicates rejected
+  with a 409; omitted → random id. (Links are permanent once created.)
 - Expiry from one hour to never; revoke a link instantly (invalidates outstanding password grants).
 - Guest-first management: a 256-bit capability token in an HttpOnly cookie (only its SHA-256 hash
   is stored server-side). Optional Supabase Auth accounts work alongside guests.
@@ -354,7 +356,7 @@ npm run e2e               # Playwright browser flows against a real Next.js serv
 ```
 
 The integration suite boots a **real PostgreSQL instance** (`embedded-postgres`), applies the
-Supabase-like bootstrap plus all four migrations, and exercises the actual route handlers:
+Supabase-like bootstrap plus all migrations, and exercises the actual route handlers:
 
 - share lifecycle: create → add items → reorder → rename → delete, cross-owner isolation,
   guest dashboard, and "no secrets in responses" assertions;
@@ -438,7 +440,7 @@ Notes:
 What verification actually produced (commands and results, not claims):
 
 ```bash
-node scripts/db-migrate.mjs --reset --bootstrap   # 4/4 migrations applied to a clean PostgreSQL
+node scripts/db-migrate.mjs --reset --bootstrap   # migrations applied to a clean PostgreSQL
 npx tsc --noEmit                                  # exit 0
 npm run lint                                      # 0 problems
 npm run format:check                              # clean

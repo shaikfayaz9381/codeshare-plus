@@ -78,6 +78,38 @@ describe("share lifecycle (integration, real PostgreSQL)", () => {
     expect(a.shareId.length).toBeGreaterThanOrEqual(20);
   });
 
+  it("honours a custom link, rejects duplicates with 409 and reserved names with 400", async () => {
+    const custom = await createGuestShare({ customShareId: "Team-Notes" });
+    expect(custom.shareId).toBe("team-notes");
+
+    actAsAnonymous();
+    const duplicate = await createShare(
+      jsonRequest(`${BASE}/api/shares`, {
+        body: { title: "Duplicate", customShareId: "team-notes" },
+        ip: uniqueIp(),
+      }),
+    );
+    expect(duplicate.status).toBe(409);
+    const duplicateBody = await readJson<{ error: { code: string } }>(duplicate);
+    expect(duplicateBody.error.code).toBe("conflict");
+
+    const reserved = await createShare(
+      jsonRequest(`${BASE}/api/shares`, {
+        body: { title: "Reserved", customShareId: "api" },
+        ip: uniqueIp(),
+      }),
+    );
+    expect(reserved.status).toBe(400);
+
+    const view = await getShare(
+      getRequest(`${BASE}/api/shares/team-notes`, {}),
+      ctx({ shareId: "team-notes" }),
+    );
+    expect(view.status).toBe(200);
+    const viewed = await readJson<{ share: PublicShare }>(view);
+    expect(viewed.share.shareId).toBe("team-notes");
+  });
+
   it("stores multiple code and text items and returns them ordered", async () => {
     const { cookie, shareId } = await createGuestShare();
 

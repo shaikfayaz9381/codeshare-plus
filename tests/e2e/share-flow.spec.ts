@@ -176,7 +176,8 @@ test("guest-only deployment explains accounts and starts new visitors empty", as
   // Brand icons ship with the app (the default Next.js favicon must not return).
   const favicon = await page.request.get("/favicon.ico");
   expect(favicon.status()).toBe(200);
-  expect(favicon.headers()["content-type"]).toContain("image/x-icon");
+  // Vercel serves .ico as image/vnd.microsoft.icon; both MIME types are valid.
+  expect(favicon.headers()["content-type"]).toMatch(/image\/(x-icon|vnd\.microsoft\.icon)/);
   const vectorIcon = await page.request.get("/icon.svg");
   expect(vectorIcon.status()).toBe(200);
   expect(vectorIcon.headers()["content-type"]).toContain("image/svg+xml");

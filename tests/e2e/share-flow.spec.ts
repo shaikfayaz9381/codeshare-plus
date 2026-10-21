@@ -182,6 +182,13 @@ test("guest-only deployment explains accounts and starts new visitors empty", as
   expect(vectorIcon.headers()["content-type"]).toContain("image/svg+xml");
 
   await page.goto("/login");
+  // Accounts are optional (Supabase Auth). On deployments where they are
+  // configured, the sign-in screen replaces the guest-only explainer, so this
+  // scenario does not apply.
+  test.skip(
+    !(await page.getByText("Guest-only deployment", { exact: true }).isVisible()),
+    "Supabase Auth is enabled on this deployment",
+  );
   await expect(page.getByText("Guest-only deployment", { exact: true })).toBeVisible();
   await expect(page.getByRole("link", { name: "Create a collection" }).first()).toBeVisible();
 

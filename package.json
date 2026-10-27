@@ -84,5 +84,9 @@
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitest": "^5.0.5"
+  },
+  "allowScripts": {
+    "@embedded-postgres/linux-x64": true,
+    "unrs-resolver": true
   }
 }
